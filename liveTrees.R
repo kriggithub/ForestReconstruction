@@ -168,8 +168,8 @@ refTreeData <- ageTreeData %>%
 # Don't know where this came from but avg. in dataset is (cm):
 ABBIavgDBH <- 14.8
 PIENavgDBH <- 19.1
-ABBIavgDBHin <- 14.8 * 2.54
-PIENavgDBHin <- 19.1 * 2.54
+ABBIavgDBHin <- ABBIavgDBH/2.54
+PIENavgDBHin <- PIENavgDBH/2.54
 
 
 
@@ -185,12 +185,50 @@ PIENsf <- 1/PIENsl
 
 
 
-# decoposition rates between conclasses
-# 3 -> 4 = 20%/year
-# 4 -> 5 = 20%/year
-# 5 -> 6 = 20%/year
-# 6 -> 7 = 20%/year
-# 7 -> 8 = 20%/year
+# decomposition rates between conclasses
+
+speciesnames <- c("ABBI", "PIEN")
+conclasses <- 3:7
+
+
+decompreference <- expand.grid(Species = speciesnames,
+                               Conclass = conclasses)
+
+decompreference$Rate <- NA
+
+decompreference$Rate[decompreference$Species == "ABBI" & decompreference$Conclass == 3] <- 0
+decompreference$Rate[decompreference$Species == "PIEN" & decompreference$Conclass == 3] <- 0
+decompreference$Rate[decompreference$Species == "ABBI" & decompreference$Conclass == 4] <- 0.2
+decompreference$Rate[decompreference$Species == "PIEN" & decompreference$Conclass == 4] <- 0.2
+decompreference$Rate[decompreference$Species == "ABBI" & decompreference$Conclass == 5] <- 0.15
+decompreference$Rate[decompreference$Species == "PIEN" & decompreference$Conclass == 5] <- 0.15
+decompreference$Rate[decompreference$Species == "ABBI" & decompreference$Conclass == 6] <- ABBIsf
+decompreference$Rate[decompreference$Species == "PIEN" & decompreference$Conclass == 6] <- PIENsf
+decompreference$Rate[decompreference$Species == "ABBI" & decompreference$Conclass == 7] <- ABBIsf
+decompreference$Rate[decompreference$Species == "PIEN" & decompreference$Conclass == 7] <- PIENsf
+# decompreference$Rate[decompreference$Species == "ABBI" & decompreference$Conclass == "8"] <- ABBIsf
+# decompreference$Rate[decompreference$Species == "PIEN" & decompreference$Conclass == "8"] <- PIENsf
+
+
+
+
+
+
+percentiles <- c(0.25, 0.5, 0.75)
+
+decompRate <- function(rate, percentiles){
+    (log(percentiles) - log(1))/(log(1 + rate))
+}
+
+
+for (p in percentiles){
+  colname <- as.character(p)
+  
+  unaddedDecompRate <- decompRate(decompreference$Rate, p)
+  
+  decompreference[[colname]] <- ave(unaddedDecompRate, decompreference$Species, FUN = cumsum)
+
+}
 
 
 
@@ -200,6 +238,91 @@ PIENsf <- 1/PIENsl
 
 
 
+percentiles <- c(0.25, 0.5, 0.75)
+
+# 3 -> 4 = 20%/year (known)
+rate34ALL <- 0.2
+decomprate34ALL <- decompRate(rate34ALL, percentiles)
+
+
+# 4 -> 5 = 15%/year(known)
+rate45ALL <- 0.15
+decomprate45ALL <- decompRate(rate45ALL, percentiles)
+decomprate45ALL <- decomprate34ALL + decomprate45ALL
+
+# 5 -> 6 = dependent on snag fall
+rate56PIEN <- PIENsf
+decomprate56PIEN <- decompRate(rate56PIEN,  percentiles)
+decomprate56PIEN <- decomprate56PIEN + decomprate45ALL
+
+rate56ABBI <- ABBIsf
+decomprate56ABBI <- decompRate(rate56ABBI,  percentiles)
+decomprate56ABBI <- decomprate56ABBI + decomprate45ALL
+
+
+# 6 -> 7 = dependent on snag fall
+
+#### Why no transition from 6 to 7 in dataset?
+
+
+# 7 -> 8 = dependent on snag fall
+rate78PIEN <- rate56PIEN
+decomprate78PIEN <- decompRate(rate78PIEN,  percentiles)
+decomprate78PIEN <- decomprate78PIEN + decomprate56PIEN
+
+rate78ABBI <- rate56ABBI
+decomprate78ABBI <- decompRate(rate78ABBI,  percentiles)
+decomprate78ABBI <- decomprate78ABBI + decomprate56PIEN
+
+
+
+
+
+
+# load in dead tree data
+
+deadTreeData <- read.csv("dead_tree_data.csv")
+deadTreeData <- deadTreeData %>% 
+  select(Transect:Decay)
+
+### Conclass function
+
+
+conclass <- function(status, decay){
+  ifelse(status == 2 & decay %in%  1:2, 3, 
+  ifelse(status == 2 & decay %in%  3:4, 4, 
+  ifelse(status == 2 & decay %in%  5:6, 5, 
+  ifelse(status == 3, 6, 
+  ifelse(status == 4 & decay %in%  1:2, 3,
+  ifelse(status == 4 & decay %in%  3:4, 4, 
+  ifelse(status == 4 & decay %in%  5:6, 5, 
+  ifelse(status == 4 & decay == 7, 8,
+  ifelse(status == 6, 8, 
+  ifelse(status == 5, 7, NA))))))))))
+}
+
+
+
+deadTreeData$Conclass <- conclass(deadTreeData$Status, deadTreeData$Decay)
+
+
+decomprates <- rbind(
+  decomprate34ALL,
+  decomprate45ALL,
+  decomprate56PIEN,
+  decomprate56ABBI,
+  decomprate78PIEN,
+  decomprate78ABBI
+)
+
+
+colnames(decomprates) <- percentiles
+
+
+
+### merge() here
+
+deadTreeData$DeathYear 
 
 
 
@@ -207,17 +330,5 @@ PIENsf <- 1/PIENsl
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-save.image(file = "liveTrres.RData")
+save.image(file = "liveTrees.RData")
 
