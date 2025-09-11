@@ -210,7 +210,10 @@ decompreference$Rate[decompreference$Species == "PIEN" & decompreference$Conclas
 # decompreference$Rate[decompreference$Species == "PIEN" & decompreference$Conclass == "8"] <- PIENsf
 
 
-
+##########################################
+################### WORK NEEDED HERE!!!!########################
+# Here, we need to keep percentiles for Conclass 3 always at 0.
+# Then conclass 4 and on, run the function so that it cumulatively adds the output of the function
 
 
 
