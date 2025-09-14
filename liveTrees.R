@@ -166,8 +166,8 @@ refTreeData <- ageTreeData %>%
 
 
 # Don't know where this came from but avg. in dataset is (cm):
-ABBIavgDBH <- 14.8
-PIENavgDBH <- 19.1
+ABBIavgDBH <- mean(treeData$DBH[treeData$Species == "ABBI" & treeData$Age >= (2013-1960)], na.rm = T)
+PIENavgDBH <- mean(treeData$DBH[treeData$Species == "PIEN" & treeData$Age >= (2013-1960)], na.rm = T)
 ABBIavgDBHin <- ABBIavgDBH/2.54
 PIENavgDBHin <- PIENavgDBH/2.54
 
