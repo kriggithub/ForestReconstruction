@@ -2,23 +2,25 @@ library(dplyr)
 library(ggplot2)
 
 
-treeData <- read.csv("tree_data.csv", header = T)
+# treeData <- read.csv("tree_data.csv", header = T)
+treeData <- read.csv("AlpineFullTreeData.csv")
+
 
 ## Data from 2013, example reference date is 1960 (53 years ago)
 
-treeData <- treeData %>% 
-  select(Transect..:DBH)
-
-treeData$DBH <- as.numeric(treeData$DBH)
-treeData$Age <- as.numeric(treeData$Age)
-treeData$Species <- trimws(treeData$Species)
-
-# or use treeData$Species[treeData$Species == "ABBI "] <- "ABBI"
-
-treeData$Species <- toupper(treeData$Species)
-
-
-unique(treeData$Species)
+# treeData <- treeData %>%
+#   select(Transect..:DBH)
+# 
+# treeData$DBH <- as.numeric(treeData$DBH)
+# treeData$Age <- as.numeric(treeData$Age)
+# treeData$Species <- trimws(treeData$Species)
+# 
+# # or use treeData$Species[treeData$Species == "ABBI "] <- "ABBI"
+# 
+# treeData$Species <- toupper(treeData$Species)
+# 
+# 
+# unique(treeData$Species)
 
 
 # Code not for by species
@@ -145,10 +147,10 @@ refTreeData <- ageTreeData %>%
   mutate(RefAge = (1960 - estabYear),
          RefDBH = ifelse(
            Species == "ABBI",
-           DBH - ((2013 - 1960) * ABBIavgInc),
+           DBH - ((2013 - 1960) * ABBIgrowthSub),
            ifelse(
              Species == "PIEN",
-             DBH - ((2013 - 1960) * PIENavgInc),
+             DBH - ((2013 - 1960) * PIENgrowthSub),
              NA))) %>% 
   filter(RefDBH >= 0)
 
@@ -168,8 +170,8 @@ refTreeData <- ageTreeData %>%
 
 
 # Don't know where this came from but avg. in dataset is (cm):
-ABBIavgDBH <- mean(treeData$DBH[treeData$Species == "ABBI" & treeData$Age >= (2013-1960)], na.rm = T)
-PIENavgDBH <- mean(treeData$DBH[treeData$Species == "PIEN" & treeData$Age >= (2013-1960)], na.rm = T)
+ABBIavgDBH <- mean(refTreeData$DBH[refTreeData$Species == "ABBI"], na.rm = T)
+PIENavgDBH <- mean(refTreeData$DBH[refTreeData$Species == "PIEN"], na.rm = T)
 
 
 ABBIavgDBHin <- ABBIavgDBH/2.54
@@ -305,9 +307,10 @@ for (sp in unique(decompreference$Species)) {
 
 # load in dead tree data
 
-deadTreeData <- read.csv("dead_tree_data.csv")
-deadTreeData <- deadTreeData %>% 
-  select(Transect:Decay, X2013.DBH)
+# deadTreeData <- read.csv("dead_tree_data.csv")
+# deadTreeData <- deadTreeData %>% 
+#   select(Transect:Decay, X2013.DBH)
+deadTreeData <- refTreeData
 
 ### Conclass function
 
@@ -344,7 +347,7 @@ deadTreeData$Conclass <- conclass(deadTreeData$Status, deadTreeData$Decay)
 
 ### merge() here
 
-deadTreeData <- merge(deadTreeData, decompreference, by = c("Species", "Conclass"))
+deadTreeData <- merge(deadTreeData, decompreference, by = c("Species", "Conclass"), all.x = T)
 
 
 for (n in percentnames){
@@ -353,29 +356,32 @@ for (n in percentnames){
 }
 
 
+
+
+
 deadTreeData$p25refDBH[deadTreeData$Species == "ABBI"] <- 
-  deadTreeData$X2013.DBH - (deadTreeData$p25DeathYear - 1960)*ABBIgrowthSub
+  deadTreeData$DBH - (deadTreeData$p25DeathYear - 1960)*ABBIgrowthSub
 deadTreeData$p25refDBH[deadTreeData$Species == "PIEN"] <- 
-  deadTreeData$X2013.DBH - (deadTreeData$p25DeathYear - 1960)*PIENgrowthSub
+  deadTreeData$DBH - (deadTreeData$p25DeathYear - 1960)*PIENgrowthSub
 
 deadTreeData$p50refDBH[deadTreeData$Species == "ABBI"] <- 
-  deadTreeData$X2013.DBH - (deadTreeData$p50DeathYear - 1960)*ABBIgrowthSub
+  deadTreeData$DBH - (deadTreeData$p50DeathYear - 1960)*ABBIgrowthSub
 deadTreeData$p50refDBH[deadTreeData$Species == "PIEN"] <- 
-  deadTreeData$X2013.DBH - (deadTreeData$p50DeathYear - 1960)*PIENgrowthSub
+  deadTreeData$DBH - (deadTreeData$p50DeathYear - 1960)*PIENgrowthSub
 
 deadTreeData$p75refDBH[deadTreeData$Species == "ABBI"] <- 
-  deadTreeData$X2013.DBH - (deadTreeData$p75DeathYear - 1960)*ABBIgrowthSub
+  deadTreeData$DBH - (deadTreeData$p75DeathYear - 1960)*ABBIgrowthSub
 deadTreeData$p75refDBH[deadTreeData$Species == "PIEN"] <- 
-  deadTreeData$X2013.DBH - (deadTreeData$p75DeathYear - 1960)*PIENgrowthSub
+  deadTreeData$DBH - (deadTreeData$p75DeathYear - 1960)*PIENgrowthSub
 
 
 
 
 
 
-deadTreeData25 <- deadTreeData[deadTreeData$p25refDBH > 0,]
-deadTreeData50 <- deadTreeData[deadTreeData$p50refDBH > 0,]
-deadTreeData75 <- deadTreeData[deadTreeData$p75refDBH > 0,]
+deadTreeData25 <- deadTreeData[deadTreeData$p25refDBH > 0 | is.na(deadTreeData$p25refDBH),]
+deadTreeData50 <- deadTreeData[deadTreeData$p50refDBH > 0 | is.na(deadTreeData$p25refDBH),]
+deadTreeData75 <- deadTreeData[deadTreeData$p75refDBH > 0 | is.na(deadTreeData$p25refDBH),]
 
 
 
@@ -387,28 +393,24 @@ deadTreeData75 <- deadTreeData[deadTreeData$p75refDBH > 0,]
 # DBH at reference year for conclasses 5+ = dib
 
 
-deadTreeData25$RefDBH[deadTreeData25$Conclass == 3] <- deadTreeData25$p25refDBH 
-deadTreeData25$RefDBH[deadTreeData25$Conclass == 4] <- deadTreeData25$p25refDBH 
-deadTreeData25$RefDBH[deadTreeData25$Conclass == 5] <- (deadTreeData25$p25refDBH *1.0508) + 0.2824
-deadTreeData25$RefDBH[deadTreeData25$Conclass == 6] <- (deadTreeData25$p25refDBH *1.0508) + 0.2824
-deadTreeData25$RefDBH[deadTreeData25$Conclass == 7] <- (deadTreeData25$p25refDBH *1.0508) + 0.2824
 
 
-
-deadTreeData50$RefDBH[deadTreeData50$Conclass == 3] <- deadTreeData50$p50refDBH 
-deadTreeData50$RefDBH[deadTreeData50$Conclass == 4] <- deadTreeData50$p50refDBH 
-deadTreeData50$RefDBH[deadTreeData50$Conclass == 5] <- (deadTreeData50$p50refDBH *1.0508) + 0.2824
-deadTreeData50$RefDBH[deadTreeData50$Conclass == 6] <- (deadTreeData50$p50refDBH *1.0508) + 0.2824
-deadTreeData50$RefDBH[deadTreeData50$Conclass == 7] <- (deadTreeData50$p50refDBH *1.0508) + 0.2824
+deadTreeData25$RefDBH[!is.na(deadTreeData25$Conclass) & deadTreeData25$Conclass %in% 3:4] <- 
+  deadTreeData25$p25refDBH[!is.na(deadTreeData25$Conclass) & deadTreeData25$Conclass %in% 3:4]
+deadTreeData25$RefDBH[!is.na(deadTreeData25$Conclass) & deadTreeData25$Conclass %in% 5:7] <- 
+  (deadTreeData25$p25refDBH[!is.na(deadTreeData25$Conclass) & deadTreeData25$Conclass %in% 5:7] * 1.0508) + 0.2824
 
 
+deadTreeData50$RefDBH[!is.na(deadTreeData50$Conclass) & deadTreeData50$Conclass %in% 3:4] <- 
+  deadTreeData50$p50refDBH[!is.na(deadTreeData50$Conclass) & deadTreeData50$Conclass %in% 3:4]
+deadTreeData50$RefDBH[!is.na(deadTreeData50$Conclass) & deadTreeData50$Conclass %in% 5:7] <- 
+  (deadTreeData50$p50refDBH[!is.na(deadTreeData50$Conclass) & deadTreeData50$Conclass %in% 5:7] * 1.0508) + 0.2824
 
+deadTreeData75$RefDBH[!is.na(deadTreeData75$Conclass) & deadTreeData75$Conclass %in% 3:4] <- 
+  deadTreeData75$p75refDBH[!is.na(deadTreeData75$Conclass) & deadTreeData75$Conclass %in% 3:4]
+deadTreeData75$RefDBH[!is.na(deadTreeData75$Conclass) & deadTreeData75$Conclass %in% 5:7] <- 
+  (deadTreeData75$p75refDBH[!is.na(deadTreeData75$Conclass) & deadTreeData75$Conclass %in% 5:7] * 1.0508) + 0.2824
 
-deadTreeData75$RefDBH[deadTreeData75$Conclass == 3] <- deadTreeData75$p75refDBH 
-deadTreeData75$RefDBH[deadTreeData75$Conclass == 4] <- deadTreeData75$p75refDBH 
-deadTreeData75$RefDBH[deadTreeData75$Conclass == 5] <- (deadTreeData75$p75refDBH *1.0508) + 0.2824
-deadTreeData75$RefDBH[deadTreeData75$Conclass == 6] <- (deadTreeData75$p75refDBH *1.0508) + 0.2824
-deadTreeData75$RefDBH[deadTreeData75$Conclass == 7] <- (deadTreeData75$p75refDBH *1.0508) + 0.2824
 
 
 
@@ -419,7 +421,9 @@ deadTreeData75$RefDBH[deadTreeData75$Conclass == 7] <- (deadTreeData75$p75refDBH
 
 
 
-finalTreeData25 <- full_join(refTreeData, deadTreeData25, by = c("RefDBH", "Species"))
+#finalTreeData25 <- full_join(refTreeData, deadTreeData25, by = c("RefDBH", "Species"))
+finalTreeData25 <- deadTreeData25
+
 finalTreeData25$BA <- 0.00007854*(finalTreeData25$RefDBH^2)
 
 ABBIbasalA25 <- sum(finalTreeData25$BA[finalTreeData25$Species == "ABBI"])
@@ -430,7 +434,8 @@ PIENtreeD25 <- sum(finalTreeData25$Species == "PIEN")*25
 
 
 
-finalTreeData50 <- full_join(refTreeData, deadTreeData50, by = c("RefDBH", "Species"))
+#finalTreeData50 <- full_join(refTreeData, deadTreeData50, by = c("RefDBH", "Species"))
+finalTreeData50 <- deadTreeData50
 finalTreeData50$BA <- 0.00007854*(finalTreeData50$RefDBH^2)
 
 ABBIbasalA50 <- sum(finalTreeData50$BA[finalTreeData50$Species == "ABBI"])
@@ -442,7 +447,8 @@ PIENtreeD50 <- sum(finalTreeData50$Species == "PIEN")*25
 
 
 
-finalTreeData75 <- full_join(refTreeData, deadTreeData75, by = c("RefDBH", "Species"))
+# finalTreeData75 <- full_join(refTreeData, deadTreeData75, by = c("RefDBH", "Species"))
+finalTreeData75 <- deadTreeData75
 finalTreeData75$BA <- 0.00007854*(finalTreeData75$RefDBH^2)
 
 ABBIbasalA75 <- sum(finalTreeData75$BA[finalTreeData75$Species == "ABBI"])

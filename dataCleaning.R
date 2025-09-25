@@ -87,13 +87,13 @@ unique(GUMOfull$Species)
 #rename columns to test function
 GUMOfull <- GUMOfull %>% 
   filter(Species != "") %>% 
-  rename(species = Species,
-         dbh = DBH,
-         age = Age,
-         status = Status,
-         decayClass = DecayClass)
+  rename(sp = Species,
+         d = DBH,
+         a = Age,
+         st = Status,
+         dc = DecayClass)
 
-unique(GUMOfull$species)
+unique(GUMOfull$sp)
 
 
 write.csv(GUMOfull, file = "GumoFullTreeData.csv")
