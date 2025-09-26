@@ -6,12 +6,12 @@ AlpineTreeData <- read.csv("AlpineFullTreeData.csv")
 
 # Function to run linear regression on aged trees
 
-ageLM <- function(data, speciesCol = Species, ageCol = Age, DBHcol = DBH, measYear) {
+ageLM <- function(data, speciesCol = Species, ageCol = Age, dbhCol = DBH, measYear) {
   
   # column names as strings
   Species <- deparse(substitute(speciesCol))
   Age <- deparse(substitute(ageCol))
-  DBH <- deparse(substitute(DBHcol))
+  DBH <- deparse(substitute(dbhCol))
   
   # new dataframe for predicted ages
   ageData <- data
@@ -53,10 +53,10 @@ a <- ageLM(data = AlpineTreeData, measYear = 2013)
 # avgIncVec: a named numeric vector, names must match species codes in data
 # Ex: c(ABBI = 0.822818, PIEN = 0.85)
 
-refLiveDBH <- function(data, refYear, measYear, speciesCol, DBHcol, avgIncVec) {
+refLiveDBH <- function(data, refYear, measYear, speciesCol, dbhCol, avgIncVec) {
  
   Species <- deparse(substitute(speciesCol))
-  DBH <- deparse(substitute(DBHcol))
+  DBH <- deparse(substitute(dbhCol))
   
   
   # growth to subtract for species (cm per year)
@@ -83,7 +83,7 @@ refLiveDBH <- function(data, refYear, measYear, speciesCol, DBHcol, avgIncVec) {
    
 }
 
-a2 <- refLiveDBH(a, 1960, 2013, speciesCol = Species, DBHcol = DBH, avgIncVec = c(PIEN = 0.85, ABBI = 0.822818))
+a2 <- refLiveDBH(a, 1960, 2013, speciesCol = Species, dbhCol = DBH, avgIncVec = c(PIEN = 0.85, ABBI = 0.822818))
 
 
 
@@ -131,11 +131,11 @@ a3 <- conclass(a2, Status, Decay)
 # function for reviving dead trees
 
 
-decompRate <- function(data, speciesCol = Species, DBHcol = DBH, conclassCol = Conclass, percentiles = c(0.25, 0.5, 0.75),  avgIncVec, measYear, refYear){
+decompRate <- function(data, speciesCol = Species, dbhCol = DBH, conclassCol = Conclass, percentiles = c(0.25, 0.5, 0.75),  avgIncVec, measYear, refYear){
   
   # column names as strings
   Species <- deparse(substitute(speciesCol))
-  DBH <- deparse(substitute(DBHcol))
+  DBH <- deparse(substitute(dbhCol))
   Conclass <- deparse(substitute(conclassCol))
   
   
@@ -252,8 +252,9 @@ a4 <- decompRate(a3, avgIncVec = c(ABBI = 0.822818, PIEN = 0.85), measYear = 201
 # correct bark for dead trees
 
 
-addBark <- function(data, conclassCol = Conclass, percentiles = c(0.25, 0.5, 0.75)) {
+addBark <- function(data, conclassCol = Conclass, speciesCol, percentiles = c(0.25, 0.5, 0.75)) {
   
+  Species <- deparse(substitute(speciesCol))
   Conclass <- deparse(substitute(conclassCol))
   
   percentnames <- paste0("p", percentiles*100)
@@ -267,6 +268,7 @@ addBark <- function(data, conclassCol = Conclass, percentiles = c(0.25, 0.5, 0.7
     posRefDBHdat <- data[data[[pRefDBH]] > 0 | is.na(data[[pRefDBH]]), ]
     
     # bark correction
+    posRefDBHdat$RefDBH <- NA_real_
     posRefDBHdat$RefDBH[posRefDBHdat$Conclass %in% 3:4] <- posRefDBHdat[[pRefDBH]][posRefDBHdat$Conclass %in% 3:4]
     posRefDBHdat$RefDBH[posRefDBHdat$Conclass %in% 5:7] <- (posRefDBHdat[[pRefDBH]][posRefDBHdat$Conclass %in% 5:7]*1.0508) + 0.2824
     
@@ -277,8 +279,18 @@ addBark <- function(data, conclassCol = Conclass, percentiles = c(0.25, 0.5, 0.7
     
     
     # summarized data by species
-    BAsum <- aggregate(BA ~ Species, data = posRefDBHdat, FUN = sum, na.rm = T)
-    spCounts <- table(posRefDBHdat$Species)
+    # BAsum <- aggregate(x = posRefDBHdat$BA,
+    #                    by = list(Species = posRefDBHdat[[Species]]),
+    #                    FUN = sum,
+    #                    na.rm = TRUE)
+    # names(BAsum)[2] <- "BA"
+    
+    
+    BAsum <- rowsum(posRefDBHdat$BA, posRefDBHdat[[Species]], na.rm = TRUE)
+    BAsum <- data.frame(Species = rownames(BAsum), BA = BAsum[,1], row.names = NULL)
+    spCounts <- table(posRefDBHdat[[Species]])
+    
+    
     summaryDat <- merge(
       BAsum,
       data.frame(Species = names(spCounts),
@@ -308,7 +320,7 @@ addBark <- function(data, conclassCol = Conclass, percentiles = c(0.25, 0.5, 0.7
 }
 
 
-a5 <- addBark(a4, Conclass)
+a5 <- addBark(a4, Conclass, Species)
 
 a5$p25$summary
 a5$p50$summary
