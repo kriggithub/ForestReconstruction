@@ -73,7 +73,7 @@ refLiveDBH <- function(data, refYear, measYear, speciesCol, dbhCol, avgIncVec) {
   
   # create new columns for RefAge and RefDBH
   data$RefAge <- refYear - data$estabYear
-  data$RefDBH <- data[DBH] - ((measYear - refYear) * incs)
+  data$RefDBH <- data[[DBH]] - ((measYear - refYear) * incs)
   
   
   # keep non-negative DBH
@@ -268,7 +268,6 @@ addBark <- function(data, conclassCol = Conclass, speciesCol, percentiles = c(0.
     posRefDBHdat <- data[data[[pRefDBH]] > 0 | is.na(data[[pRefDBH]]), ]
     
     # bark correction
-    posRefDBHdat$RefDBH <- NA_real_
     posRefDBHdat$RefDBH[posRefDBHdat$Conclass %in% 3:4] <- posRefDBHdat[[pRefDBH]][posRefDBHdat$Conclass %in% 3:4]
     posRefDBHdat$RefDBH[posRefDBHdat$Conclass %in% 5:7] <- (posRefDBHdat[[pRefDBH]][posRefDBHdat$Conclass %in% 5:7]*1.0508) + 0.2824
     

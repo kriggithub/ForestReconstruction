@@ -19,6 +19,9 @@ b5$p50$summary
 b5$p75$summary
 
 
+#### Full function
+#### Assumes cleaned data:
+# Species, Age, DBH, Status, Decay
 
 
 forestStandReconstruction <- function(data = data, measYear, refYear, avgIncVec, speciesCol = Species, ageCol = Age, dbhCol = DBH, statusCol = Status, decayCol = Decay, percentiles = c(0.25, 0.5, 0.75)) {
@@ -68,7 +71,7 @@ forestStandReconstruction <- function(data = data, measYear, refYear, avgIncVec,
   
   # create new columns for RefAge and RefDBH
   data$RefAge <- refYear - data$estabYear
-  data$RefDBH <- data[DBH] - ((measYear - refYear) * incs)
+  data$RefDBH <- data[[DBH]] - ((measYear - refYear) * incs)
   
   
   # keep non-negative DBH
@@ -210,7 +213,6 @@ forestStandReconstruction <- function(data = data, measYear, refYear, avgIncVec,
     posRefDBHdat <- data[data[[pRefDBH]] > 0 | is.na(data[[pRefDBH]]), ]
     
     # bark correction
-    posRefDBHdat$RefDBH <- NA_real_
     posRefDBHdat$RefDBH[posRefDBHdat$Conclass %in% 3:4] <- posRefDBHdat[[pRefDBH]][posRefDBHdat$Conclass %in% 3:4]
     posRefDBHdat$RefDBH[posRefDBHdat$Conclass %in% 5:7] <- (posRefDBHdat[[pRefDBH]][posRefDBHdat$Conclass %in% 5:7]*1.0508) + 0.2824
     
@@ -289,6 +291,11 @@ Alpine1975$p25$summary
 Alpine1975$p50$summary
 Alpine1975$p75$summary
 
+# area of plots, so if plot is 20 x 20, you have to multiply by 25 for hectare
+# regression should only run for live trees
+# presettlement trees (all alive)
+
+
 
 
 Alpine1960 <- forestStandReconstruction(AlpineTreeData, 
@@ -305,6 +312,8 @@ Alpine1960$p25$summary
 Alpine1960$p50$summary
 Alpine1960$p75$summary
 
+
+data <- Alpine1960$p25$data
 
 
 Gumo1922 <- forestStandReconstruction(GumoTreeData, 
