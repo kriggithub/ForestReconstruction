@@ -3,9 +3,6 @@
 
 
 AlpineTreeData <- read.csv("AlpineFullTreeData.csv")
-# GumoTreeData <- read.csv("GumoFullTreeData.csv")
-
-
 
 # Function to run linear regression on aged trees
 
@@ -56,8 +53,11 @@ a <- ageLM(data = AlpineTreeData, measYear = 2013)
 # avgIncVec: a named numeric vector, names must match species codes in data
 # Ex: c(ABBI = 0.822818, PIEN = 0.85)
 
-refLiveDBH <- function(data, refYear, measYear, avgIncVec) {
+refLiveDBH <- function(data, refYear, measYear, speciesCol, DBHcol, avgIncVec) {
  
+  Species <- deparse(substitute(speciesCol))
+  DBH <- deparse(substitute(DBHcol))
+  
   
   # growth to subtract for species (cm per year)
   growthSub <- (avgIncVec*2)/10
@@ -68,24 +68,22 @@ refLiveDBH <- function(data, refYear, measYear, avgIncVec) {
 
   
   # match increments to species
-  incs <- growthSub[data$Species]
+  incs <- growthSub[match(data[[Species]], names(growthSub))]
   
   
   # create new columns for RefAge and RefDBH
   data$RefAge <- refYear - data$estabYear
-  data$RefDBH <- data$DBH - ((measYear - refYear) * incs)
+  data$RefDBH <- data[DBH] - ((measYear - refYear) * incs)
   
   
   # keep non-negative DBH
   data <- data[data$RefDBH >= 0, ]
-  data <- data[complete.cases(data), ]
-  
   
   return(data)
    
 }
 
-a2 <- refLiveDBH(a, 1960, 2013, c(ABBI = 0.822818, PIEN = 0.85))
+a2 <- refLiveDBH(a, 1960, 2013, speciesCol = Species, DBHcol = DBH, avgIncVec = c(PIEN = 0.85, ABBI = 0.822818))
 
 
 
@@ -217,7 +215,7 @@ decompRate <- function(data, speciesCol = Species, DBHcol = DBH, conclassCol = C
   
   
   
-  stitchedData <- merge(data, decompreference, by = c("Species", "Conclass"), all.x = T)
+  stitchedData <- merge(data, decompreference, by.x = c(Species, Conclass), by.y = c("Species", "Conclass"), all.x = T)
   
   
   for (n in percentnames){
