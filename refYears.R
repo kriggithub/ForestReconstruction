@@ -3,7 +3,7 @@
 # Species, Age, DBH, Status, Decay
 
 
-forestStandReconstruction <- function(data = data, measYear, refYear, avgIncVec, plotSize, barkEqList = list(), speciesCol = Species, ageCol = Age, dbhCol = DBH, statusCol = Status, decayCol = Decay, percentiles = c(0.25, 0.5, 0.75)) {
+forestStandReconstruction <- function(data = data, measYear, refYear, avgIncVec, plotSize, barkEqList = list(), speciesCol = Species, ageCol = Age, dbhCol = DBH, statusCol = Status, decayCol = Decay, percentiles = c(0.25, 0.5, 0.75), minDbh = 0) {
   
   # pull out column names as strings
   Species <- deparse(substitute(speciesCol))
@@ -93,12 +93,12 @@ forestStandReconstruction <- function(data = data, measYear, refYear, avgIncVec,
   
   
   # create new columns for RefAge and RefDBH
-  dat$RefAge <- rY - dat$estabYear
+  # dat$RefAge <- rY - dat$estabYear
   dat$RefDBH <- dat[[DBH]] - ((measYear - rY) * incs)
   
   
   # keep non-negative DBH
-  dat <- dat[dat$RefDBH >= 0, ]
+  dat <- dat[dat$RefDBH >= minDbh, ]
   
   
   # pull out vectors
@@ -206,11 +206,18 @@ forestStandReconstruction <- function(data = data, measYear, refYear, avgIncVec,
     
     # create reference DBH columns
     incs <- growthSub[dat[[Species]]]
-    dat[[pRefDBH]] <- dat[[DBH]] - (dat[[deathCol]] - rY) * incs
+    
+    
+    dat[[pRefDBH]] <- ifelse(dat[[deathCol]] > rY,
+                             dat[[DBH]] - (dat[[deathCol]] - rY) * incs,
+                             dat[[DBH]])
+    
+    
+    # dat[[pRefDBH]] <- dat[[DBH]] - (dat[[deathCol]] - rY) * incs
     
     pRefDBH <- paste0(n, "refDBH")
     
-    dat <- dat[dat[[pRefDBH]] > 0 | is.na(dat[[pRefDBH]]), ]
+    dat <- dat[dat[[pRefDBH]] > minDbh | is.na(dat[[pRefDBH]]), ]
     
     # bark correction
     dat$RefDBH[dat$Conclass %in% 3:4] <- dat[[pRefDBH]][dat$Conclass %in% 3:4]
@@ -226,9 +233,7 @@ forestStandReconstruction <- function(data = data, measYear, refYear, avgIncVec,
       }
     }
     
-    
-    # dat$RefDBH[dat$Conclass %in% 5:7] <- (dat[[pRefDBH]][dat$Conclass %in% 5:7]*1.0508) + 0.2824
-    
+
     
     
     # basal area (m^2)
@@ -299,6 +304,14 @@ Alpine$p50
 # plot(Alpine$p50$refYear, Alpine$p50$ABBI.ba)
 # plot(Alpine$p50$refYear, Alpine$p50$PIEN.ba)
 
+a <- data.frame(
+  p25a <- Alpine$p25$ABBI.density,
+  p50a <- Alpine$p50$ABBI.density,
+  p75a <- Alpine$p75$ABBI.density,
+  p25p <- Alpine$p25$PIEN.density,
+  p50p <- Alpine$p50$PIEN.density,
+  p75p <- Alpine$p75$PIEN.density
+)
 
 
 
@@ -311,7 +324,9 @@ Gumo <- forestStandReconstruction(GumoTreeData,
                                       ageCol = a,
                                       dbhCol = d,
                                       statusCol = st,
-                                      decayCol = dc)  
+                                      decayCol = dc,
+                                      minDbh = 5
+                                      )  
 
 
 
