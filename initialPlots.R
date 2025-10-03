@@ -63,3 +63,5 @@ plotStandReconstruction <- function(finalData) {
 
 plotStandReconstruction(Alpine)
 plotStandReconstruction(Gumo)
+plotStandReconstruction(corwinaCpp)
+plotStandReconstruction(corwinaC2)

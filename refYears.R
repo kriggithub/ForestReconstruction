@@ -83,10 +83,12 @@ forestStandReconstruction <- function(data = data, measYear, refYear, avgIncVec,
   for (rY in refYear){
   
   dat <- data
+
   
-  dat <- dat[dat$estabYear <= rY & complete.cases(dat), ]
+  neededCols <- c(DBH, Status, Species) # the truly required ones
+  dat <- dat[dat$estabYear <= rY & complete.cases(dat[, neededCols]), ]
   
-  
+
   # match increments to species
   # incs <- growthSub[match(dat[[Species]], names(growthSub))]
   incs <- growthSub[dat[[Species]]]
@@ -283,6 +285,10 @@ forestStandReconstruction <- function(data = data, measYear, refYear, avgIncVec,
 #### Function usage
 AlpineTreeData <- read.csv("AlpineFullTreeData.csv")
 GumoTreeData <- read.csv("GumoFullTreeData.csv")
+corwinaCppData <- read.csv("corwinaCppData.csv")
+corwinaC2Data <- read.csv("corwinaC2Data.csv")
+
+
 
 
 
@@ -298,21 +304,7 @@ Alpine <- forestStandReconstruction(AlpineTreeData,
                                         decayCol = Decay 
                                         )  
 
-Alpine$p50
-# plot(Alpine$p50$refYear, Alpine$p50$ABBI.density)
-# plot(Alpine$p50$refYear, Alpine$p50$PIEN.density)
-# plot(Alpine$p50$refYear, Alpine$p50$ABBI.ba)
-# plot(Alpine$p50$refYear, Alpine$p50$PIEN.ba)
-
-a <- data.frame(
-  p25a <- Alpine$p25$ABBI.density,
-  p50a <- Alpine$p50$ABBI.density,
-  p75a <- Alpine$p75$ABBI.density,
-  p25p <- Alpine$p25$PIEN.density,
-  p50p <- Alpine$p50$PIEN.density,
-  p75p <- Alpine$p75$PIEN.density
-)
-
+#Alpine$p50
 
 
 Gumo <- forestStandReconstruction(GumoTreeData, 
@@ -327,10 +319,39 @@ Gumo <- forestStandReconstruction(GumoTreeData,
                                       decayCol = dc,
                                       minDbh = 5
                                       )  
-
-
-
-Gumo$p50
+#Gumo$p50
 # plot(Gumo$p50$refYear, Gumo$p50$PIPO.density)
 
 
+
+
+
+corwinaCpp <- forestStandReconstruction(corwinaCppData, 
+                                  measYear = 2013,
+                                  refYear = seq(from = 1850, to = 2013, by = 1),
+                                  avgIncVec = c(PSME = 0.190243902439024/5, PIPO = 0.207317073170732/5),
+                                  plotSize = 400,
+                                  speciesCol = Species,
+                                  ageCol = Adjusted.Age,
+                                  dbhCol = DBH,
+                                  statusCol = Status,
+                                  decayCol = Decay,
+                                  minDbh = 5
+)  
+
+
+
+
+
+corwinaC2 <- forestStandReconstruction(corwinaC2Data, 
+                                       measYear = 2013,
+                                       refYear = seq(from = 1900, to = 2013, by = 1),
+                                       avgIncVec = c(PSME = 0.190243902439024/5, PIPO = 0.207317073170732/5),
+                                       plotSize = 400,
+                                       speciesCol = Species,
+                                       ageCol = Adjusted.Age,
+                                       dbhCol = DBH,
+                                       statusCol = Status,
+                                       decayCol = Decay,
+                                       minDbh = 5
+)  

@@ -50,13 +50,6 @@ unique(fullTreeData$Species)
 write.csv(fullTreeData, file = "AlpineFullTreeData.csv")
 
 
-
-
-
-
-
-
-
 ##### GUMO Dataset
 GUMOlive <- read.csv("GUMOliveTrees.csv")
 GUMOdead <- read.csv("GUMOdeadTrees.csv")
@@ -97,5 +90,43 @@ unique(GUMOfull$sp)
 
 
 write.csv(GUMOfull, file = "GumoFullTreeData.csv")
+
+
+
+##### Corwina Dataset
+corwinaData <- read.csv("corwinaData.csv")
+corwinaData <- corwinaData %>% 
+  rename(Plot = Plot..) %>% 
+  filter(Plot != "C-1")
+
+
+corwinaAgeData <- read.csv("corwinaAgeData.csv")
+corwinaAgeData <- corwinaAgeData %>% 
+  select(Plot, Species, DBH, Adjusted.Age)
+
+
+corwinaData$DBH <- as.numeric(corwinaData$DBH)
+corwinaAgeData$DBH <- as.numeric(corwinaAgeData$DBH)
+
+
+
+corwinaFullData <- left_join(corwinaData, corwinaAgeData, by = c("Plot", "Species", "DBH"))
+
+corwinaC2Data <- corwinaFullData %>% 
+  filter(Plot == "C-2",
+         Species %in% c("PIPO", "PSME"))
+
+
+write.csv(corwinaC2Data, file = "corwinaC2Data.csv")
+
+
+
+corwinaCppData <- corwinaFullData %>% 
+  filter(Plot != "C-2",
+         Species %in% c("PIPO", "PSME"))
+
+
+write.csv(corwinaCppData, file = "corwinaCppData.csv")
+
 
 
