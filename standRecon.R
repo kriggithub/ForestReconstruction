@@ -270,7 +270,7 @@ standRecon <- function(data = data,
       
       
       
-      # Step 6: Calculate stand density and basal area at reference date and return
+      # Step 6: Calculate stand density and basal area at reference dates and store
       
       # (a) Add reconstructed live and dead tree DBH to one table
       
@@ -278,6 +278,8 @@ standRecon <- function(data = data,
         liveTreeData[, c(Species, "RefDBH")],
         deadTreeData[, c(Species, "RefDBH")]
       )
+      # remove rows that are NA
+      finalTreeData <- finalTreeData[rowSums(is.na(finalTreeData)) != ncol(finalTreeData), ]      
       
       
       # (b) Calculate basal area for reference date
@@ -315,8 +317,52 @@ standRecon <- function(data = data,
     }
     
   }
+  
+  
+  # Step 7: Calculate stand density and basal area at measured date and store
+  
+  # (a) Subset live trees from measured data
+  measTreeData <- allTreeData[allTreeData[[Status]] == 1 & 
+                                !is.na(allTreeData[[DBH]]), 
+                              c(Species, DBH)]
+  
+  # (b) Calculate basal area 
+  # basal area per tree
+  measTreeData$BA <- (0.00007854 * (measTreeData[[DBH]]^2)) * (10000/(plotSize*nPlots))
+  # sum basal area per species
+  measBAsum <- rowsum(measTreeData$BA, measTreeData[[Species]], na.rm = T)
+  # create output list of BA
+  measBAlist <- setNames(as.list(measBAsum[,1]), paste0(rownames(measBAsum), ".ba"))
+  
+  # (c) Calculate stand density for reference date
+  # extract number of trees per species
+  measSpCounts <- table(measTreeData[[Species]])
+  # create output list of tree density
+  measDensList <- setNames(as.list(as.numeric(measSpCounts) * (10000/(plotSize*nPlots))),
+                       paste0(names(measSpCounts), ".density"))
+  
+  
+  # (d) Return stand density and basal area by species per percentile and reference year
+  # and append to final data
+  measRowOut <- data.frame(
+    refYear = measYear,
+    measBAlist,
+    measDensList,
+    check.names = FALSE
+  )
+  
+  # write to final output
+  if (is.null(finalOutput[["measured"]])) {
+    finalOutput[["measured"]] <- measRowOut
+  } else {
+    finalOutput[["measured"]] <- rbind(finalOutput[["measured"]], measRowOut)
+  }
+  
+  
+  # Step 8: Return data
   return(list(
     finalOutput = finalOutput,
+    finalTreeData = finalTreeData,
     allTreeData = allTreeData,
     liveTreeData = liveTreeData,
     deadTreeData = deadTreeData
@@ -324,37 +370,123 @@ standRecon <- function(data = data,
   
 }
 
-GumoTreeData <- read.csv("GumoFullTreeData.csv")
-
-
-Gumo <- standRecon(GumoTreeData, 
-                                  measYear = 2004,
-                                  refYear = c(1922, 1970),
-                                  avgIncVec = c(PIED = 0.102439024390244*5, PIPO = 0.207317073170732*5, PIST = 0.136585366*5, PSME = 0.190243902439024*5, QUGA = 0.075609756097561*5),
-                                  plotSize = 400,
-                                  nPlots = 159,
-                                  speciesCol = "sp",
-                                  ageCol = "a",
-                                  dbhCol = "d",
-                                  statusCol = "st",
-                                  decayCol = "dc",
-                                  minDbh = 5
-)  
-
-
-all <- Gumo$allTreeData
-live <- Gumo$liveTreeData
-dead <- Gumo$deadTreeData
 
 
 
 
-plotStandReconstruction(Gumo)
-plotStandBars(Gumo)
+
+# GumoTreeData <- read.csv("GumoFullTreeData.csv")
+# 
+# 
+# Gumo <- standRecon(GumoTreeData, 
+#                                   measYear = 2004,
+#                                   refYear = c(1922, 1970),
+#                                   avgIncVec = c(PIED = 0.102439024390244*5, PIPO = 0.207317073170732*5, PIST = 0.136585366*5, PSME = 0.190243902439024*5, QUGA = 0.075609756097561*5),
+#                                   plotSize = 400,
+#                                   nPlots = 159,
+#                                   speciesCol = "sp",
+#                                   ageCol = "a",
+#                                   dbhCol = "d",
+#                                   statusCol = "st",
+#                                   decayCol = "dc",
+#                                   minDbh = 5
+# )  
+# 
+# plotStandBars(Gumo)
 
 
-nrow(GumoTreeData) - (nrow(dead)+nrow(live))
+corwinaCppData <- read.csv("corwinaCppData.csv")
+corwinaC2Data <- read.csv("corwinaC2Data.csv")
 
-nrow(dead)
-nrow(live)
+
+
+
+corwinaCpp <- standRecon(corwinaCppData,
+                        measYear = 2023,
+                        refYear = 1912,
+                        avgIncVec = c(PSME = 1.0282, PIPO = 0.6067),
+                        plotSize = 400,
+                        nPlots = 5,
+                        speciesCol = "Species",
+                        ageCol = "Adjusted.Age",
+                        dbhCol = "DBH",
+                        statusCol = "Status",
+                        decayCol = "Decay")
+
+
+
+# plotStandBars(corwinaCpp)
+plotStandBars2(corwinaCpp)
+
+
+
+
+final <- corwinaCpp$finalTreeData
+live <- corwinaCpp$liveTreeData
+dead <- corwinaCpp$deadTreeData
+
+
+
+
+
+
+
+# corwinaC2 <- standRecon(corwinaC2Data,
+#                          measYear = 2023,
+#                          refYear = 1912,
+#                          avgIncVec = c(PSME = 0.8976, PIPO = 0.512),
+#                          plotSize = 400,
+#                          nPlots = 1,
+#                          speciesCol = "Species",
+#                          ageCol = "Adjusted.Age",
+#                          dbhCol = "DBH",
+#                          statusCol = "Status",
+#                          decayCol = "Decay")
+# 
+# 
+# 
+# plotStandBars(corwinaC2)
+
+
+
+# Extract outputs
+finalData <- corwinaCpp$finalOutput
+
+
+# --- make sure measured columns match percentile columns ---
+if ("measured" %in% names(finalData)) {
+  names(finalData$measured) <- gsub("\\.measYear$", "", names(finalData$measured))
+}
+
+# Combine into one dataframe
+allDF <- do.call(rbind, lapply(names(finalData), function(p) {
+  df <- finalData[[p]]
+  df$scenario <- p
+  df
+}))
+
+# Order scenarios explicitly
+allDF$scenario <- factor(allDF$scenario, levels = c("measured", "p25", "p50", "p75"))
+
+# --- choose what to plot ---
+# density columns (swap to ".ba$" for basal area)
+cols <- grep("\\.density$", names(allDF), value = TRUE)
+
+# Build matrix: rows = scenario, cols = species
+mat <- as.matrix(allDF[, cols])
+rownames(mat) <- allDF$scenario
+
+# Stacked bar plot
+barplot(t(mat),
+        beside = FALSE,              # stacked bars
+        col = rainbow(ncol(mat)),
+        border = NA,
+        names.arg = rownames(mat),   # measured, p25, p50, p75
+        ylab = "Density (trees/ha)",
+        main = paste("Tree Density (Measured + Percentiles, Year", min(allDF$refYear), ")"))
+
+legend("topright",
+       legend = gsub("\\.density$", "", cols),
+       fill = rainbow(ncol(mat)), bty = "n", cex = 0.8)
+
 
