@@ -1,23 +1,15 @@
-normCols <- function(x) {
-  if (is.character(x)) {
-    x
-  } else {
-    deparse(substitute(x))
-  }
-}
-
 liveTreeAge <- function(data = data,
-                        speciesCol = Species,
-                        ageCol = Age,
-                        dbhCol = DBH,
-                        statusCol = Status,
+                        speciesCol = "Species",
+                        ageCol = "Age",
+                        dbhCol = "DBH",
+                        statusCol = "Status",
                         measYear = measYear){
   
   # Pull out column names as strings
-  Species <- normCols(speciesCol)
-  Age <- normCols(ageCol)
-  DBH <- normCols(dbhCol)
-  Status <- normCols(statusCol)
+  Species <- speciesCol
+  Age <- ageCol
+  DBH <- dbhCol
+  Status <- statusCol
   
   # Loop for each unique species in data
   for (sp in unique(data[[Species]])) {
@@ -140,3 +132,59 @@ plotStandReconstruction <- function(standOutput) {
            lty = c(2,1,2), lwd = 2, bty = "n", title = "Percentile", cex = 0.8)
   }
 }
+
+
+
+plotStandBars <- function(standOutput, which = c("density", "basalarea")) {
+  ## ---- Extract summary data ----
+  finalData <- standOutput$finalOutput
+  
+  # Bind all percentiles into one big DF
+  allDF <- do.call(rbind, lapply(names(finalData), function(p) {
+    cbind(percentile = p, finalData[[p]])
+  }))
+  
+  # Columns for densities and basal areas
+  densCols <- grep("\\.density$", names(allDF), value = TRUE)
+  baCols   <- grep("\\.ba$", names(allDF), value = TRUE)
+  
+  # Pick which type(s) of plot
+  which <- match.arg(which, several.ok = TRUE)
+  
+  ## ---- Helper for stacked bars ----
+  stackedBarPlot <- function(df, cols, ylab, main) {
+    # order by reference year
+    df <- df[order(df$refYear), ]
+    years <- df$refYear
+    mat <- as.matrix(df[, cols])
+    rownames(mat) <- years
+    
+    barplot(t(mat), 
+            beside = FALSE, 
+            col = rainbow(ncol(mat)),
+            border = NA,
+            names.arg = years,
+            las = 2, cex.names = 0.7,
+            ylab = ylab,
+            main = main)
+    legend("topright", legend = gsub("\\.(density|ba)", "", cols),
+           fill = rainbow(ncol(mat)), bty = "n", cex = 0.8)
+  }
+  
+  ## ---- DENSITY stacked bar ----
+  if ("density" %in% which && length(densCols) > 0) {
+    stackedBarPlot(allDF[allDF$percentile == unique(allDF$percentile)[1], ],
+                   densCols,
+                   ylab = "Density (trees/ha)",
+                   main = "Tree Density by Reference Year")
+  }
+  
+  ## ---- BASAL AREA stacked bar ----
+  if ("basalarea" %in% which && length(baCols) > 0) {
+    stackedBarPlot(allDF[allDF$percentile == unique(allDF$percentile)[1], ],
+                   baCols,
+                   ylab = expression("Basal Area (m"^2*"/ha)"),
+                   main = "Basal Area by Reference Year")
+  }
+}
+

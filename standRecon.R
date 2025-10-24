@@ -1,8 +1,9 @@
 standRecon <- function(data = data,
                        measYear,
                        refYear,
-                       avgIncVec,
+                       avgIncVec, # want mm/year in radius
                        plotSize,
+                       nPlots = 1,
                        barkEqList = list(),
                        speciesCol = "Species",
                        ageCol = "Age",
@@ -15,11 +16,11 @@ standRecon <- function(data = data,
   # Step 0: Prefunction helpers/definitions
   
   # (a) Pull out column names as strings
-  Species <- normCols(speciesCol)
-  Age     <- normCols(ageCol)
-  DBH     <- normCols(dbhCol)
-  Status  <- normCols(statusCol)
-  Decay   <- normCols(decayCol)
+  Species <- speciesCol
+  Age     <- ageCol
+  DBH     <- dbhCol
+  Status  <- statusCol
+  Decay   <- decayCol
   
   # (b) create column names for each percent
   percentnames <- paste0("p", percentiles*100)
@@ -281,7 +282,7 @@ standRecon <- function(data = data,
       
       # (b) Calculate basal area for reference date
       # basal area per tree
-      finalTreeData$BA <- 0.00007854 * (finalTreeData$RefDBH^2)
+      finalTreeData$BA <- (0.00007854 * (finalTreeData$RefDBH^2)) * (10000/(plotSize*nPlots))
       # sum basal area per species
       BAsum <- rowsum(finalTreeData$BA, finalTreeData[[Species]], na.rm = T)
       # create output list of BA
@@ -291,7 +292,7 @@ standRecon <- function(data = data,
       # extract number of trees per species
       spCounts <- table(finalTreeData[[Species]])
       # create output list of tree density
-      DensList <- setNames(as.list(as.numeric(spCounts) * (10000/(plotSize*160))),
+      DensList <- setNames(as.list(as.numeric(spCounts) * (10000/(plotSize*nPlots))),
                            paste0(names(spCounts), ".density"))
       
       
@@ -316,6 +317,7 @@ standRecon <- function(data = data,
   }
   return(list(
     finalOutput = finalOutput,
+    allTreeData = allTreeData,
     liveTreeData = liveTreeData,
     deadTreeData = deadTreeData
   ))
@@ -327,9 +329,10 @@ GumoTreeData <- read.csv("GumoFullTreeData.csv")
 
 Gumo <- standRecon(GumoTreeData, 
                                   measYear = 2004,
-                                  refYear = seq(from = 1890, to = 2004, by = 1),
-                                  avgIncVec = c(PIED = 0.102439024390244/5, PIPO = 0.207317073170732/5, PIST = 0.136585366/5, PSME = 0.190243902439024/5, QUGA = 0.075609756097561/5),
+                                  refYear = c(1922, 1970),
+                                  avgIncVec = c(PIED = 0.102439024390244*5, PIPO = 0.207317073170732*5, PIST = 0.136585366*5, PSME = 0.190243902439024*5, QUGA = 0.075609756097561*5),
                                   plotSize = 400,
+                                  nPlots = 159,
                                   speciesCol = "sp",
                                   ageCol = "a",
                                   dbhCol = "d",
@@ -339,6 +342,7 @@ Gumo <- standRecon(GumoTreeData,
 )  
 
 
+all <- Gumo$allTreeData
 live <- Gumo$liveTreeData
 dead <- Gumo$deadTreeData
 
@@ -346,5 +350,11 @@ dead <- Gumo$deadTreeData
 
 
 plotStandReconstruction(Gumo)
+plotStandBars(Gumo)
 
+
+nrow(GumoTreeData) - (nrow(dead)+nrow(live))
+
+nrow(dead)
+nrow(live)
 
