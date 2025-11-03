@@ -1,6 +1,21 @@
 corwinaCppData <- read.csv("corwinaCppData.csv")
 corwinaC2Data <- read.csv("corwinaC2Data.csv")
 GumoTreeData <- read.csv("GumoFullTreeData.csv")
+AlpineTreeData <- read.csv("AlpineFullTreeData.csv")
+
+
+
+Alpine <- standRecon(AlpineTreeData, 
+                     measYear = 2013,
+                     refYear = 1900,
+                     avgIncVec = c(PIEN = 0.85, ABBI = 0.822818),
+                     plotSize = 400,
+                     nPlots = 23,
+                     speciesCol = "Species",
+                     ageCol = "Age",
+                     dbhCol = "DBH",
+                     statusCol = "Status",
+                     decayCol = "Decay")  
 
 
 
@@ -48,7 +63,63 @@ Gumo <- standRecon(GumoTreeData,
                    statusCol = "st",
                    decayCol = "dc")
 
-all <- Gumo$allTreeData
+
+
+
+# Extract outputs
+finalData5 <- Alpine$finalOutput
+
+
+# --- make sure measured columns match percentile columns ---
+if ("measured" %in% names(finalData5)) {
+  names(finalData5$measured) <- gsub("\\.measYear$", "", names(finalData5$measured))
+}
+
+# Combine into one dataframe
+allDF <- do.call(rbind, lapply(names(finalData5), function(p) {
+  df <- finalData5[[p]]
+  df$scenario <- p
+  df
+}))
+
+# Explicit order of scenarios
+allDF$scenario <- factor(allDF$scenario, 
+                         levels = c("measured", "p25", "p50", "p75"))
+
+# ---- Rename scenarios for display ----
+scenario_labels <- c(
+  measured = "2013",
+  p25 = "1900 (25%)",
+  p50 = "1900 (50%)",
+  p75 = "1900 (75%)"
+)
+
+# choose density columns
+cols <- grep("\\.density$", names(allDF), value = TRUE)
+
+# Build matrix and reorder rows
+mat <- as.matrix(allDF[, cols])
+rownames(mat) <- allDF$scenario
+mat <- mat[c("measured", "p25", "p50", "p75"), , drop = FALSE]  # enforce order
+
+# Make labels in that same order
+plot_labels <- scenario_labels[rownames(mat)]
+
+# Plot
+barplot(t(mat),
+        beside = FALSE,
+        col = gray.colors(ncol(mat), start = 0.9, end = 0.3),
+        border = NA,
+        names.arg = plot_labels,
+        ylab = "Density (trees/ha)",
+        main = paste("Alpine Tree Density"))
+
+legend("topright",
+       legend = gsub("\\.density$", "", cols),
+       fill = gray.colors(ncol(mat), start = 0.9, end = 0.3), bty = "n", cex = 0.8)
+
+
+
 
 
 
