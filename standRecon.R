@@ -44,7 +44,14 @@ standRecon <- function(data = data,
   barkEqList <- modifyList(defaultBarkEq, barkEqList)
   
   # (e) setup final dataframe
-  finalOutput <- list()
+  finalOutput <- data.frame(
+    type = character(),
+    year = integer(),
+    percentile = numeric(),
+    species = character(),
+    basal_area = numeric(),
+    stem_density = numeric()
+  )
   
   
   
@@ -285,34 +292,39 @@ standRecon <- function(data = data,
       # (b) Calculate basal area for reference date
       # basal area per tree
       finalTreeData$BA <- (0.00007854 * (finalTreeData$RefDBH^2)) * (10000/(plotSize*nPlots))
-      # sum basal area per species
-      BAsum <- rowsum(finalTreeData$BA, finalTreeData[[Species]], na.rm = T)
-      # create output list of BA
-      BAlist <- setNames(as.list(BAsum[,1]), paste0(rownames(BAsum), ".ba"))
+      # sum basal area per species as a named vector
+      ba_sum <- tapply(finalTreeData$BA,
+                       finalTreeData[[Species]],
+                       sum,
+                       na.rm = TRUE)
       
       # (c) Calculate stand density for reference date
       # extract number of trees per species
       spCounts <- table(finalTreeData[[Species]])
-      # create output list of tree density
-      DensList <- setNames(as.list(as.numeric(spCounts) * (10000/(plotSize*nPlots))),
-                           paste0(names(spCounts), ".density"))
+      # multiply species counts by stems per hectare
+      spDensity <- as.numeric(spCounts) * (10000/(plotSize*nPlots))
+      # reassign species names
+      names(spDensity) <- names(table(finalTreeData[[Species]]))
+      
+      # pull out names for both basal area and tree density
+      species_all <- union(names(ba_sum), names(spDensity))
+      
       
       
       # (d) Return stand density and basal area by species per percentile and reference year
       # and append to final data
-      rowOut <- data.frame(
-        refYear = rY,
-        BAlist,
-        DensList,
-        check.names = FALSE
+      rows <- data.frame(
+        type = "reconstructed",
+        year = rY,
+        percentile = as.numeric(sub("^p", "", n)) / 100,
+        species = species_all,
+        basal_area = as.numeric(ba_sum[species_all]),
+        stem_density = as.numeric(spDensity[species_all])
       )
       
+      
       # write to final output
-      if (is.null(finalOutput[[n]])) {
-        finalOutput[[n]] <- rowOut
-      } else {
-        finalOutput[[n]] <- rbind(finalOutput[[n]], rowOut)
-      }
+      finalOutput <- rbind(finalOutput, rows)
       
     }
     
@@ -330,42 +342,30 @@ standRecon <- function(data = data,
   # basal area per tree
   measTreeData$BA <- (0.00007854 * (measTreeData[[DBH]]^2)) * (10000/(plotSize*nPlots))
   # sum basal area per species
-  measBAsum <- rowsum(measTreeData$BA, measTreeData[[Species]], na.rm = T)
-  # create output list of BA
-  measBAlist <- setNames(as.list(measBAsum[,1]), paste0(rownames(measBAsum), ".ba"))
+  meas_ba_sum <- tapply(measTreeData$BA,
+                        measTreeData[[Species]],
+                        sum,
+                        na.rm = TRUE)
   
-  # (c) Calculate stand density for reference date
-  # extract number of trees per species
-  measSpCounts <- table(measTreeData[[Species]])
-  # create output list of tree density
-  measDensList <- setNames(as.list(as.numeric(measSpCounts) * (10000/(plotSize*nPlots))),
-                       paste0(names(measSpCounts), ".density"))
+  meas_dens <- table(measTreeData[[Species]])
+  meas_dens <- as.numeric(meas_dens) * (10000/(plotSize*nPlots))
+  names(meas_dens) <- names(table(measTreeData[[Species]]))
   
+  species_all2 <- union(names(meas_ba_sum), names(meas_dens))
   
-  # (d) Return stand density and basal area by species per percentile and reference year
-  # and append to final data
-  measRowOut <- data.frame(
-    refYear = measYear,
-    measBAlist,
-    measDensList,
-    check.names = FALSE
+  rows2 <- data.frame(
+    type = "measured",
+    year = measYear,
+    percentile = NA_real_,
+    species = species_all2,
+    basal_area = as.numeric(meas_ba_sum[species_all2]),
+    stem_density = as.numeric(meas_dens[species_all2])
   )
   
-  # write to final output
-  if (is.null(finalOutput[["measured"]])) {
-    finalOutput[["measured"]] <- measRowOut
-  } else {
-    finalOutput[["measured"]] <- rbind(finalOutput[["measured"]], measRowOut)
-  }
+  finalOutput <- rbind(finalOutput, rows2)
   
   
   # Step 8: Return data
-  return(list(
-    finalOutput = finalOutput,
-    finalTreeData = finalTreeData,
-    allTreeData = allTreeData,
-    liveTreeData = liveTreeData,
-    deadTreeData = deadTreeData
-  ))
+  return(finalOutput)
   
 }
